@@ -1,0 +1,25 @@
+{
+    "name": "kelunik/tic-tac-toe",
+    "description": "Tic Tac Toe based on Aerys.",
+    "type": "project",
+    "require": {
+        "amphp/aerys": "dev-master as 0.3.0",
+        "amphp/aerys-session": "dev-master",
+        "amphp/redis": "^0.2.1",
+        "rdlowrey/auryn": "^1.2"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Niklas Keller",
+            "email": "me@kelunik.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Kelunik\\TicTacToe\\": "src"
+        }
+    }
+}
