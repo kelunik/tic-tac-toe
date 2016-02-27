@@ -66,3 +66,19 @@ body {
   color: #0b97c4;
   transform: translateY(0.25vmin);
 }
+
+.reload div {
+  font-weight: bold;
+  display: block;
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  top: 75%;
+  bottom: 0;
+  font-size: 5vmin;
+}
+
+.reload div span {
+  display: block;
+  margin-bottom: 6vmin;
+}

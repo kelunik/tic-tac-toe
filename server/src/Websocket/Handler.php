@@ -7,8 +7,12 @@ use Aerys\Response;
 use Aerys\Session;
 use Aerys\Websocket;
 use Amp\Promise;
+use Kelunik\TicTacToe\Event\Publisher;
 use Kelunik\TicTacToe\Event\Subscriber;
+use Kelunik\TicTacToe\Storage\Counter;
+use Kelunik\TicTacToe\Storage\GameStorage;
 use function Amp\coroutine;
+use function Amp\once;
 use function Amp\resolve;
 
 class Handler implements Websocket {
@@ -30,8 +34,20 @@ class Handler implements Websocket {
     /** @var Command[] */
     private $commands;
 
-    public function __construct(Subscriber $subscriber, array $origins) {
+    /** @var Counter */
+    private $counter;
+
+    /** @var GameStorage */
+    private $gameStorage;
+
+    /** @var Publisher */
+    private $publisher;
+
+    public function __construct(Subscriber $subscriber, Counter $counter, GameStorage $gameStorage, Publisher $publisher, array $origins) {
         $this->subscriber = $subscriber;
+        $this->counter = $counter;
+        $this->gameStorage = $gameStorage;
+        $this->publisher = $publisher;
         $this->origins = $origins;
         $this->clients = [];
         $this->users = [];
@@ -79,6 +95,8 @@ class Handler implements Websocket {
         $this->clients[$clientId] = $userId;
         $this->users[$userId][$clientId] = $clientId;
 
+        yield $this->counter->increment("user.{$userId}");
+
         if ($newUser) {
             $this->subscribeUser($userId)->when(coroutine(function ($error) use ($userId) {
                 if ($error) {
@@ -118,6 +136,24 @@ class Handler implements Websocket {
 
     public function onClose(int $clientId, int $code, string $reason) {
         $userId = $this->clients[$clientId];
+
+        $connectionCount = yield $this->counter->decrement("user.{$userId}");
+
+        if ($connectionCount === 0) {
+            once(function () use ($userId) {
+                $count = yield $this->counter->get("user.{$userId}");
+
+                if ($count === 0) {
+                    $players = yield $this->gameStorage->findByUser($userId);
+
+                    if ($players) {
+                        yield $this->gameStorage->delete($players);
+                        yield $this->publisher->publish("user.{$players[0]}", (new Message("game.abort"))->getPayload());
+                        yield $this->publisher->publish("user.{$players[1]}", (new Message("game.abort"))->getPayload());
+                    }
+                }
+            }, 5000);
+        }
 
         unset($this->clients[$clientId]);
         unset($this->users[$userId][$clientId]);

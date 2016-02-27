@@ -10,6 +10,8 @@ class Game extends React.Component {
         super();
 
         this.state = {
+            waiting: true,
+            aborted: false,
             finished: false,
             turn: false,
             fields: [
@@ -45,19 +47,33 @@ class Game extends React.Component {
 
             if (data.type === "game.state") {
                 if (data.data.fields === null) {
+                    this.setState({
+                        waiting: true
+                    });
+
                     this.props.ws.send('{"start": null}');
 
                     return;
                 }
 
                 this.setState({
+                    waiting: false,
                     fields: data.data.fields,
                     turn: data.data.turn
                 });
             } else if (data.type === "game.end") {
                 this.setState({
+                    waiting: false,
                     turn: false,
-                    finished: true
+                    finished: true,
+                    aborted: false
+                });
+            } else if (data.type === "game.abort") {
+                this.setState({
+                    waiting: false,
+                    aborted: true,
+                    finished: true,
+                    turn: false
                 });
             }
         } catch (e) {
@@ -89,6 +105,19 @@ class Game extends React.Component {
             reload = (
                 <div className="reload" onClick={this.onRefresh.bind(this)}>
                     <i className="fa fa-refresh"/>
+
+                    {this.state.aborted ? <div>Your opponent left.</div> : null}
+                </div>
+            );
+        }
+
+        let waiting = null;
+
+        if (this.state.waiting) {
+            waiting = (
+                <div className="reload">
+                    <i className="fa fa-clock-o"/>
+                    <div>Waiting for<br/>another player.</div>
                 </div>
             );
         }
@@ -101,6 +130,7 @@ class Game extends React.Component {
                 })}>
                     {rows}
                     {reload}
+                    {waiting}
                 </div>
             </div>
         );
@@ -118,6 +148,7 @@ class Game extends React.Component {
 
     onRefresh() {
         this.setState({
+            waiting: true,
             finished: false,
             turn: false,
             fields: [
